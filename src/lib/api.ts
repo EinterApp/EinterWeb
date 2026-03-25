@@ -121,15 +121,15 @@ export const api = {
     body: JSON.stringify(data)
   }),
 
-  // User management (admin only)
-  getAllUsers: () => apiRequest<BackendUserData[]>('/api/users'),
-  updateUserRole: (uid: string, role: UserRole) => apiRequest(`/api/users/${uid}/role`, {
-    method: 'PUT',
-    body: JSON.stringify({ role })
+  // User management (SuperAdmin only - via auth router)
+  getAllUsers: () => apiRequest<BackendUserData[]>('/api/auth/users'),
+  updateUserRole: (id: string, role: UserRole) => apiRequest(`/api/auth/users/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ rol: role })
   }),
-  toggleUserActive: (uid: string, isActive: boolean) => apiRequest(`/api/users/${uid}/status`, {
-    method: 'PUT',
-    body: JSON.stringify({ isActive })
+  toggleUserActive: (id: string, isActive: boolean) => apiRequest(`/api/auth/users/${id}/toggle-active`, {
+    method: 'PATCH',
+    body: JSON.stringify({ is_active: isActive })
   }),
 
   // Add more endpoints as needed

@@ -104,12 +104,12 @@ export function ProductModal({
   const fetchSuppliers = async () => {
     setLoadingSuppliers(true);
     try {
-      const data = await fetchAPI("/api/proveedores");
+      const data = await fetchAPI("/api/odoo/proveedores");
       const suppliersList = data.items || data || [];
       setSuppliers(
         suppliersList.map((supplier: any) => ({
-          id: supplier.id,
-          name: supplier.name,
+          id: supplier.id_proveedor || supplier.id,
+          name: supplier.nombre || supplier.name,
         }))
       );
     } catch (err) {

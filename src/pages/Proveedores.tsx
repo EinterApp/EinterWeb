@@ -48,10 +48,18 @@ export function Proveedores() {
     setError(null);
 
     try {
-      const response = await fetchAPI(`/(api)/proveedores`);
+      const response = await fetchAPI(`/api/odoo/proveedores`);
 
-      setProveedores(response.items);
-      setFilteredProveedores(response.items);
+      // Map Odoo raw DB fields to Proveedor type
+      const mapped: Proveedor[] = (response.items || []).map((item: any) => ({
+        id: item.id_proveedor,
+        name: item.nombre,
+        city: item.ciudad,
+        lead_time: 0,
+      }));
+
+      setProveedores(mapped);
+      setFilteredProveedores(mapped);
     } catch (err) {
       console.error("Error fetching proveedores from database:", err);
       setError(
@@ -160,13 +168,22 @@ export function Proveedores() {
         tiempo_envio: proveedorData.lead_time,
       };
 
-      await fetchAPI("/(api)/proveedores", {
+      const result = await fetchAPI("/(api)/proveedores", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(apiData),
       });
+
+      // Sync to Odoo after creation
+      if (result?.id) {
+        try {
+          await fetchAPI(`/api/odoo/sync/proveedor/${result.id}`, { method: "POST" });
+        } catch (odooErr) {
+          console.warn("Odoo sync failed (supplier will sync later):", odooErr);
+        }
+      }
 
       // Refresh the proveedor list
       await fetchProveedores();
@@ -192,6 +209,15 @@ export function Proveedores() {
         },
         body: JSON.stringify(apiData),
       });
+
+      // Sync to Odoo after update
+      if (proveedorData.id) {
+        try {
+          await fetchAPI(`/api/odoo/sync/proveedor/${proveedorData.id}`, { method: "POST" });
+        } catch (odooErr) {
+          console.warn("Odoo sync failed (supplier will sync later):", odooErr);
+        }
+      }
 
       // Refresh the proveedor list
       await fetchProveedores();

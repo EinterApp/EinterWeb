@@ -21,10 +21,35 @@ export function Movimientos() {
     setError(null);
 
     try {
-      const response = await fetchAPI("/(api)/misc?type=movimientos");
+      // Fetch both entradas and salidas from Odoo endpoints
+      const [entradasRes, salidasRes] = await Promise.all([
+        fetchAPI("/api/odoo/entradas"),
+        fetchAPI("/api/odoo/salidas"),
+      ]);
 
-      setMovimientos(response.items);
-      setFilteredMovimientos(response.items);
+      // Map Odoo fields to Movement type
+      const mapItem = (item: any): Movimiento => ({
+        id_movimiento: item.id_movimiento,
+        id_usuario: 0,
+        id_ubicacion_origen: 0,
+        id_ubicacion_destino: 0,
+        tipo: item.tipo === "entrada" || item.tipo === "compra" ? 1 : 2,
+        id_tarima: 0,
+        id_articulo: 0,
+        cantidad: item.cantidad || 0,
+        old_masterSKU: item.master_sku || "",
+        new_masterSKU: item.master_sku || "",
+        fecha: item.fecha_movimiento || "",
+        nombre_usuario: item.nombre_producto || "",
+      });
+
+      const allItems = [
+        ...(entradasRes.items || []).map(mapItem),
+        ...(salidasRes.items || []).map(mapItem),
+      ].sort((a, b) => b.id_movimiento - a.id_movimiento);
+
+      setMovimientos(allItems);
+      setFilteredMovimientos(allItems);
     } catch (err) {
       console.error("Error fetching movimientos from database:", err);
       setError(

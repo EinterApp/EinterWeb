@@ -102,24 +102,31 @@ export function VentaModal({
     setSkuError(null);
 
     try {
-      // Buscar producto exacto por SKU
-      const data = await fetchAPI(`/api/productos?search=${encodeURIComponent(trimmedSku)}`);
-      
-      const productos = Array.isArray(data) ? data : data.items || [];
-      
-      if (!productos || productos.length === 0) {
+      // Buscar producto por SKU usando endpoint Odoo
+      const data = await fetchAPI("/api/odoo/productos?pageSize=1000");
+
+      const rawItems = Array.isArray(data) ? data : data.items || [];
+
+      // Filter client-side by SKU
+      const matched = rawItems.filter(
+        (item: any) =>
+          (item.master_sku || "").toLowerCase().includes(trimmedSku.toLowerCase()) ||
+          (item.nombre_producto || "").toLowerCase().includes(trimmedSku.toLowerCase())
+      );
+
+      if (!matched || matched.length === 0) {
         setSkuError(`No existe producto con SKU: ${trimmedSku}`);
         return;
       }
 
-      const product = productos[0]; // Tomar el primer resultado (búsqueda exacta)
+      const product = matched[0];
 
       const newProducto: Producto = {
-        id: product.id.toString(),
-        nombre: product.name,
-        sku: product.sku,
+        id: (product.id_articulo || product.id).toString(),
+        nombre: product.nombre_producto || product.name,
+        sku: product.master_sku || product.sku,
         cantidad: 1,
-        precio: product.price || 0,
+        precio: product.precio || product.price || 0,
       };
 
       setFolios(

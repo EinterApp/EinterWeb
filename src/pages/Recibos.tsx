@@ -28,6 +28,7 @@ export function Recibos() {
   const [filteredRecibos, setFilteredRecibos] = useState<Recibo[]>([]);
   const [searchText, setSearchText] = useState("");
   const [loading, setLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [_pagination, setPagination] = useState({
     total: 0,
@@ -47,7 +48,7 @@ export function Recibos() {
     setLoading(true);
     setError(null);
     try {
-      const response = (await fetchAPI(`/(api)/recibos`)) as RecibosResponse;
+      const response = (await fetchAPI(`/api/odoo/recibos`)) as RecibosResponse;
       setRecibos(response.items);
       setFilteredRecibos(response.items);
       setPagination({
@@ -84,6 +85,21 @@ export function Recibos() {
 
   const handleOpenPdf = (reciboId: number) => {
     window.open(`/api/recibos/${reciboId}/pdf`, "_blank");
+  };
+
+  // Pull recibos from Odoo and refresh list
+  const handleSyncFromOdoo = async () => {
+    setSyncing(true);
+    setError(null);
+    try {
+      await fetchAPI("/api/odoo/pull/recibos", { method: "POST" });
+      await fetchRecibos();
+    } catch (err) {
+      console.error("Error syncing from Odoo:", err);
+      setError("Error al sincronizar desde Odoo");
+    } finally {
+      setSyncing(false);
+    }
   };
 
   const handleOpenCreateModal = () => {
@@ -167,12 +183,21 @@ export function Recibos() {
           <h1 className="text-3xl font-bold tracking-wide text-gray-900 dark:text-white">
             Recibos
           </h1>
-          <button
-            onClick={handleOpenCreateModal}
-            className="px-6 py-2 border border-black dark:border-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black transition-colors text-sm font-medium text-gray-900 dark:text-white"
-          >
-            + Agregar Recibo
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={handleSyncFromOdoo}
+              disabled={syncing}
+              className="px-6 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white transition-colors text-sm font-medium rounded"
+            >
+              {syncing ? "Sincronizando..." : "Sync desde Odoo"}
+            </button>
+            <button
+              onClick={handleOpenCreateModal}
+              className="px-6 py-2 border border-black dark:border-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black transition-colors text-sm font-medium text-gray-900 dark:text-white"
+            >
+              + Agregar Recibo
+            </button>
+          </div>
         </div>
 
         <div className="flex items-center mt-4">

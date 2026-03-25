@@ -132,8 +132,15 @@ export function ReciboModal({
   const fetchProveedores = async () => {
     setLoadingProveedores(true);
     try {
-      const data = await fetchAPI("/(api)/proveedores");
-      const proveedoresList = Array.isArray(data) ? data : data.items || [];
+      const data = await fetchAPI("/api/odoo/proveedores");
+      const rawList = Array.isArray(data) ? data : data.items || [];
+      // Map Odoo raw fields to Proveedor type
+      const proveedoresList: Proveedor[] = rawList.map((item: any) => ({
+        id: item.id_proveedor || item.id,
+        name: item.nombre || item.name,
+        city: item.ciudad || item.city || "",
+        lead_time: 0,
+      }));
       setProveedores(proveedoresList);
       setFilteredProveedores(proveedoresList);
     } catch (err) {
@@ -156,26 +163,31 @@ export function ReciboModal({
     setSkuError(null);
 
     try {
-      // Buscar producto exacto por SKU
-      const data = await fetchAPI(
-        `/(api)/productos?search=${encodeURIComponent(trimmedSku)}`
+      // Buscar producto por SKU usando endpoint Odoo
+      const data = await fetchAPI("/api/odoo/productos?pageSize=1000");
+
+      const rawItems = Array.isArray(data) ? data : data.items || [];
+
+      // Filter client-side by SKU
+      const matched = rawItems.filter(
+        (item: any) =>
+          (item.master_sku || "").toLowerCase().includes(trimmedSku.toLowerCase()) ||
+          (item.nombre_producto || "").toLowerCase().includes(trimmedSku.toLowerCase())
       );
 
-      const respuestaProductos = Array.isArray(data) ? data : data.items || [];
-
-      if (!respuestaProductos || respuestaProductos.length === 0) {
+      if (!matched || matched.length === 0) {
         setSkuError(`No existe producto con SKU: ${trimmedSku}`);
         return;
       }
 
-      const product = respuestaProductos[0]; // Tomar el primer resultado (búsqueda exacta)
+      const product = matched[0];
 
       const newProducto: Producto = {
-        id: product.id.toString(),
-        nombre: product.name,
-        sku: product.sku,
+        id: (product.id_articulo || product.id).toString(),
+        nombre: product.nombre_producto || product.name,
+        sku: product.master_sku || product.sku,
         cantidad: 1,
-        costo_por_articulo: product.price || 0,
+        costo_por_articulo: product.precio || product.price || 0,
       };
 
       setProductos([...productos, newProducto]);

@@ -46,16 +46,36 @@ export function Productos() {
         pageSize: "20",
       });
 
-      if (searchQuery && searchQuery.trim() !== "") {
-        params.append("search", searchQuery);
-      }
-
-      const response: ApiResponse<Product> = await fetchAPI(
-        `/(api)/productos?${params}`
+      const response = await fetchAPI(
+        `/api/odoo/productos?${params}`
       );
 
-      setProducts(response.items || []);
-      setFilteredProducts(response.items || []);
+      // Map Odoo raw DB fields to Product type
+      const mapped: Product[] = (response.items || []).map((item: any) => ({
+        id: item.id_articulo,
+        sku: item.master_sku,
+        name: item.nombre_producto,
+        price: item.precio,
+        cost: item.costo,
+        photo: null,
+        stock: 0,
+        weight_kg: 0,
+        supplier: null,
+        category: undefined,
+        standard_tarima: undefined,
+      }));
+
+      // Client-side search filter (Odoo endpoint doesn't support search param)
+      const filtered = searchQuery.trim()
+        ? mapped.filter(
+            (p) =>
+              p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              String(p.sku).toLowerCase().includes(searchQuery.toLowerCase())
+          )
+        : mapped;
+
+      setProducts(filtered);
+      setFilteredProducts(filtered);
       setTotalPages(Math.ceil((response.total || 0) / (response.pageSize || 20)));
       setPage(pageNum);
     } catch (err) {
@@ -225,13 +245,22 @@ export function Productos() {
         inventario_standar_tarima: productData.standard_tarima || null,
       };
 
-      await fetchAPI("/(api)/productos", {
+      const result = await fetchAPI("/(api)/productos", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(apiData),
       });
+
+      // Sync to Odoo after creation
+      if (result?.id) {
+        try {
+          await fetchAPI(`/api/odoo/sync/producto/${result.id}`, { method: "POST" });
+        } catch (odooErr) {
+          console.warn("Odoo sync failed (product will sync later):", odooErr);
+        }
+      }
 
       // Optimización: solo refrescar si estamos en la primera página sin búsqueda
       if (page === 1 && !searchText) {
@@ -285,6 +314,13 @@ export function Productos() {
         },
         body: JSON.stringify(apiData),
       });
+
+      // Sync to Odoo after update
+      try {
+        await fetchAPI(`/api/odoo/sync/producto/${productData.id}`, { method: "POST" });
+      } catch (odooErr) {
+        console.warn("Odoo sync failed (product will sync later):", odooErr);
+      }
 
       // Optimización: mantener la página actual
       await fetchProducts(searchText, page);
