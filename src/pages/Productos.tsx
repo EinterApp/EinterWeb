@@ -58,11 +58,20 @@ export function Productos() {
         price: item.precio,
         cost: item.costo,
         photo: null,
-        stock: 0,
-        weight_kg: 0,
-        supplier: null,
-        category: undefined,
-        standard_tarima: undefined,
+        stock: item.existencias || 0,
+        weight_kg: item.peso_kg || 0,
+        dimensions_cm: {
+          largo: item.largo_cm || 0,
+          ancho: item.ancho_cm || 0,
+          alto: item.alto_cm || 0,
+        },
+        supplier: item.id_proveedor
+          ? { id: item.id_proveedor, name: item.proveedor_nombre }
+          : null,
+        category: item.id_categoria
+          ? { id: item.id_categoria, name: item.nombre_categoria }
+          : undefined,
+        standard_tarima: item.inventario_standar_tarima || undefined,
       }));
 
       // Client-side search filter (Odoo endpoint doesn't support search param)
