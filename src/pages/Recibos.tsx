@@ -28,7 +28,6 @@ export function Recibos() {
   const [filteredRecibos, setFilteredRecibos] = useState<Recibo[]>([]);
   const [searchText, setSearchText] = useState("");
   const [loading, setLoading] = useState(false);
-  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [_pagination, setPagination] = useState({
     total: 0,
@@ -85,21 +84,6 @@ export function Recibos() {
 
   const handleOpenPdf = (reciboId: number) => {
     window.open(`/api/recibos/${reciboId}/pdf`, "_blank");
-  };
-
-  // Pull recibos from Odoo and refresh list
-  const handleSyncFromOdoo = async () => {
-    setSyncing(true);
-    setError(null);
-    try {
-      await fetchAPI("/api/odoo/pull/recibos", { method: "POST" });
-      await fetchRecibos();
-    } catch (err) {
-      console.error("Error syncing from Odoo:", err);
-      setError("Error al sincronizar desde Odoo");
-    } finally {
-      setSyncing(false);
-    }
   };
 
   const handleOpenCreateModal = () => {
@@ -184,13 +168,6 @@ export function Recibos() {
             Recibos
           </h1>
           <div className="flex gap-3">
-            <button
-              onClick={handleSyncFromOdoo}
-              disabled={syncing}
-              className="px-6 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white transition-colors text-sm font-medium rounded"
-            >
-              {syncing ? "Sincronizando..." : "Sync desde Odoo"}
-            </button>
             <button
               onClick={handleOpenCreateModal}
               className="px-6 py-2 border border-black dark:border-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black transition-colors text-sm font-medium text-gray-900 dark:text-white"

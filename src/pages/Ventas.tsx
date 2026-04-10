@@ -34,7 +34,6 @@ export function Ventas() {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedOrden, setSelectedOrden] = useState<OrdenVenta | null>(null);
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
-  const [syncing, setSyncing] = useState(false);
 
   // Fetch ventas from API
   useEffect(() => {
@@ -88,27 +87,6 @@ export function Ventas() {
 
   const handleOpenPdf = (ventaId: number) => {
     window.open(`/api/ventas/${ventaId}/pdf`, "_blank");
-  };
-
-  // Pull ventas from Odoo and refresh list
-  const handleSyncFromOdoo = async () => {
-    setSyncing(true);
-    setError(null);
-    try {
-      await fetchAPI("/api/odoo/pull/ventas", { method: "POST" });
-      // Refresh list after pull
-      const response = (await fetchAPI(
-        `/api/odoo/ventas?page=${page}&pageSize=${pageSize}`
-      )) as VentasResponse;
-      setVentas(response.items);
-      setFilteredVentas(response.items);
-      setTotal(response.total);
-    } catch (err) {
-      console.error("Error syncing from Odoo:", err);
-      setError("Error al sincronizar desde Odoo");
-    } finally {
-      setSyncing(false);
-    }
   };
 
   const handleOpenCreateModal = () => {
@@ -189,13 +167,6 @@ export function Ventas() {
             Ventas
           </h1>
           <div className="flex gap-3">
-            <button
-              onClick={handleSyncFromOdoo}
-              disabled={syncing}
-              className="px-6 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white transition-colors text-sm font-medium rounded"
-            >
-              {syncing ? "Sincronizando..." : "Sync desde Odoo"}
-            </button>
             <button
               onClick={handleOpenCreateModal}
               className="px-6 py-2 border border-black dark:border-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black transition-colors text-sm font-medium text-gray-900 dark:text-white"

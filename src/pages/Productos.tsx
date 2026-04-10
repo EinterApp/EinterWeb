@@ -3,7 +3,7 @@ import { ProductModal } from "../components/ProductModal";
 import { DeleteConfirmModal } from "../components/DeleteConfirmModal";
 import { useDarkMode } from "../context/DarkModeContext";
 import { fetchAPI } from "../lib/fetch";
-import type { Product, ApiResponse } from "../lib/types";
+import type { Product } from "../lib/types";
 
 export function Productos() {
   useDarkMode();
