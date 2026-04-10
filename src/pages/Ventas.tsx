@@ -206,14 +206,14 @@ export function Ventas() {
 
         <div className="flex-1 overflow-auto">
           {loading ? (
-            <div className="flex-1 items-center justify-center py-20">
+            <div className="flex flex-1 items-center justify-center py-20">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
               <p className="text-gray-500 font-robotoRegular mt-4">
                 Cargando ventas...
               </p>
             </div>
           ) : error ? (
-            <div className="flex-1 items-center justify-center py-20">
+            <div className="flex flex-1 items-center justify-center py-20">
               <p className="text-red-500 font-robotoMedium">
                 Error al cargar ventas
               </p>
@@ -222,7 +222,7 @@ export function Ventas() {
               </p>
             </div>
           ) : filteredVentas.length === 0 ? (
-            <div className="flex-1 items-center justify-center py-20">
+            <div className="flex flex-1 items-center justify-center py-20">
               <p className="text-gray-500 font-robotoRegular">
                 No hay ventas disponibles
               </p>

@@ -226,14 +226,14 @@ export function Recibos() {
 
         <div className="flex-1 overflow-auto">
           {loading ? (
-            <div className="flex-1 items-center justify-center py-20">
+            <div className="flex flex-1 items-center justify-center py-20">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
               <p className="text-gray-500 font-robotoRegular mt-4">
                 Cargando recibos...
               </p>
             </div>
           ) : error ? (
-            <div className="flex-1 items-center justify-center py-20">
+            <div className="flex flex-1 items-center justify-center py-20">
               <p className="text-red-500 font-robotoRegular">{error}</p>
               <button
                 onClick={fetchRecibos}
@@ -243,7 +243,7 @@ export function Recibos() {
               </button>
             </div>
           ) : filteredRecibos.length === 0 ? (
-            <div className="flex-1 items-center justify-center py-20">
+            <div className="flex flex-1 items-center justify-center py-20">
               <p className="text-gray-500 font-robotoRegular">
                 No hay recibos disponibles
               </p>
