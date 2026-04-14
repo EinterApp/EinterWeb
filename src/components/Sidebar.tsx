@@ -20,6 +20,7 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
     { id: 'movimientos', label: 'Movimientos', icon: '🔄' },
     { id: 'ventas', label: 'Ventas', icon: '💰' },
     { id: 'recibos', label: 'Recibos', icon: '🧾' },
+    { id: 'inventario-inteligente', label: 'Inv. Inteligente', icon: '🧠' },
     { id: 'categorias', label: 'Categorías', icon: '📂' },
     { id: 'perfiles', label: 'Perfiles', icon: '👤' },
     ...(isSuperAdmin ? [{ id: 'users', label: 'Usuarios', icon: '👥' }] : []),

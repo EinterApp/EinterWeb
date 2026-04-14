@@ -11,6 +11,7 @@ import { Ubicaciones } from './pages/Ubicaciones'
 import { Movimientos } from './pages/Movimientos'
 import { Ventas } from './pages/Ventas'
 import { Recibos } from './pages/Recibos'
+import { InventarioInteligente } from './pages/InventarioInteligente'
 import { Perfiles } from './pages/Perfiles'
 import { Categorias } from './pages/Categorias'
 import Profile from './components/Profile'
@@ -37,6 +38,8 @@ function App() {
         return <Ventas/>
       case 'recibos':
         return <Recibos/>
+      case 'inventario-inteligente':
+        return <InventarioInteligente />
       case 'categorias':
         return <Categorias/>
       case 'perfiles':
