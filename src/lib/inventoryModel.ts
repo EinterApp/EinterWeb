@@ -178,30 +178,56 @@ export function calcularResultados(
 
 // ─── Resumen por proveedor (llenado de contenedor) ────────────────────────────
 
-export interface ResumenContenedor {
-  supplier: string;
-  tipoContenedor: string;
-  pesoTotalKg: number;
-  volumenTotalM3: number;
+export interface OpcionContenedor {
+  tipo: string;
   pesoMaxKg: number;
   volMaxM3: number;
   pctPeso: number;
   pctVol: number;
+  /** El mayor de los dos porcentajes — determina si cabe o no */
+  pctMax: number;
+  recomendado: boolean;
+}
+
+export interface ResumenContenedor {
+  supplier: string;
+  pesoTotalKg: number;
+  volumenTotalM3: number;
+  /** Métricas calculadas para cada tipo de contenedor */
+  opciones: OpcionContenedor[];
+  /** Tipo recomendado por el modelo */
+  tipoRecomendado: string;
   productos: ProductoResultado[];
+}
+
+/** Elige el tipo de contenedor óptimo para un pedido dado su peso y volumen. */
+function elegirTipoRecomendado(
+  pesoKg: number,
+  volM3: number,
+  opciones: Omit<OpcionContenedor, 'recomendado'>[]
+): string {
+  // Contenedores en orden de menor a mayor capacidad
+  const ordered = [...opciones].sort((a, b) => a.volMaxM3 - b.volMaxM3);
+  // Entre los que caben (pctMax ≤ 100), elegir el de mayor ocupación (más eficiente)
+  const queEntran = ordered.filter((o) => o.pctMax <= 100);
+  if (queEntran.length > 0) {
+    return queEntran.reduce((best, o) => (o.pctMax > best.pctMax ? o : best)).tipo;
+  }
+  // Ninguno cabe → recomendar el más grande para minimizar contenedores
+  return ordered[ordered.length - 1].tipo;
 }
 
 /**
  * Agrupa los productos en alerta por proveedor y calcula el llenado
- * estimado del contenedor configurado.
+ * estimado para TODOS los tipos de contenedor disponibles.
+ * Cada ResumenContenedor incluye las opciones y una recomendación.
  */
 export function calcularResumenContenedores(
-  resultados: ProductoResultado[],
-  params: ModelParams
+  resultados: ProductoResultado[]
 ): ResumenContenedor[] {
   const alertas = resultados.filter(
     (r) => r.semaforo === 'rojo' || r.semaforo === 'amarillo'
   );
-  const cont = CONTENEDORES[params.tipoContenedor];
 
   const bySupplier: Record<string, ProductoResultado[]> = {};
   for (const r of alertas) {
@@ -213,22 +239,35 @@ export function calcularResumenContenedores(
   return Object.entries(bySupplier)
     .map(([supplier, prods]) => {
       const pesoTotal = prods.reduce((sum, p) => sum + p.pesoKg, 0);
-      const volTotal = prods.reduce((sum, p) => sum + p.volumenM3, 0);
+      const volTotal  = prods.reduce((sum, p) => sum + p.volumenM3, 0);
+
+      const opcionesSinFlag: Omit<OpcionContenedor, 'recomendado'>[] =
+        Object.entries(CONTENEDORES).map(([tipo, cap]) => {
+          const pctPeso = Math.min(999, Math.round((pesoTotal / cap.pesoMaxKg) * 1000) / 10);
+          const pctVol  = Math.min(999, Math.round((volTotal  / cap.volumenM3) * 1000) / 10);
+          return {
+            tipo,
+            pesoMaxKg: cap.pesoMaxKg,
+            volMaxM3:  cap.volumenM3,
+            pctPeso,
+            pctVol,
+            pctMax: Math.max(pctPeso, pctVol),
+          };
+        });
+
+      const tipoRecomendado = elegirTipoRecomendado(pesoTotal, volTotal, opcionesSinFlag);
+
+      const opciones: OpcionContenedor[] = opcionesSinFlag.map((o) => ({
+        ...o,
+        recomendado: o.tipo === tipoRecomendado,
+      }));
+
       return {
         supplier,
-        tipoContenedor: params.tipoContenedor,
-        pesoTotalKg: Math.round(pesoTotal * 100) / 100,
-        volumenTotalM3: Math.round(volTotal * 1000) / 1000,
-        pesoMaxKg: cont.pesoMaxKg,
-        volMaxM3: cont.volumenM3,
-        pctPeso: Math.min(
-          999,
-          Math.round((pesoTotal / cont.pesoMaxKg) * 1000) / 10
-        ),
-        pctVol: Math.min(
-          999,
-          Math.round((volTotal / cont.volumenM3) * 1000) / 10
-        ),
+        pesoTotalKg:    Math.round(pesoTotal * 100) / 100,
+        volumenTotalM3: Math.round(volTotal  * 1000) / 1000,
+        opciones,
+        tipoRecomendado,
         productos: prods,
       };
     })

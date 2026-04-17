@@ -10,6 +10,7 @@ import {
   type ModelParams,
   type ProductoResultado,
   type ResumenContenedor,
+  type OpcionContenedor,
   type SemaforoStatus,
 } from '../lib/inventoryModel';
 
@@ -72,8 +73,6 @@ function fmtDias(d: number) {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-type TabType = 'semaforo' | 'pedidos' | 'contenedores';
-
 export function InventarioInteligente() {
   useDarkMode();
 
@@ -99,7 +98,7 @@ export function InventarioInteligente() {
   });
 
   // UI state
-  const [tab, setTab]             = useState<TabType>('semaforo');
+  const [tab, setTab]               = useState<'semaforo' | 'contenedores'>('semaforo');
   const [showConfig, setShowConfig] = useState(false);
   const [search, setSearch]       = useState('');
   const [filterSupplier, setFilterSupplier] = useState('');
@@ -204,8 +203,8 @@ export function InventarioInteligente() {
 
   // ── Resumen contenedores ──────────────────────────────────────────────────
   const contenedores: ResumenContenedor[] = useMemo(
-    () => calcularResumenContenedores(resultados, params),
-    [resultados, params]
+    () => calcularResumenContenedores(resultados),
+    [resultados]
   );
 
   // ── Inline editing ────────────────────────────────────────────────────────
@@ -303,20 +302,6 @@ export function InventarioInteligente() {
                   />
                 </div>
               ))}
-              <div>
-                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Tipo contenedor</label>
-                <select
-                  value={params.tipoContenedor}
-                  onChange={(e) =>
-                    setParams((prev) => ({ ...prev, tipoContenedor: e.target.value as any }))
-                  }
-                  className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
-                >
-                  {Object.keys(CONTENEDORES).map((k) => (
-                    <option key={k} value={k}>{k}&apos;</option>
-                  ))}
-                </select>
-              </div>
             </div>
             <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">
               * Peso y volumen son estimados. Para mayor precisión se requieren datos logísticos (piezas/caja, peso/caja).
@@ -371,13 +356,10 @@ export function InventarioInteligente() {
       {/* ── Tabs ───────────────────────────────────────────────────────────── */}
       <div className="px-6 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
         <div className="flex gap-1">
-          {(
-            [
-              { id: 'semaforo',     label: '📊 Semáforo'   },
-              { id: 'pedidos',      label: '📦 Pedidos'    },
-              { id: 'contenedores', label: '🚢 Contenedores'},
-            ] as { id: TabType; label: string }[]
-          ).map(({ id, label }) => (
+          {([
+            { id: 'semaforo',     label: '📊 Semáforo'    },
+            { id: 'contenedores', label: '🚢 Contenedores' },
+          ] as { id: 'semaforo' | 'contenedores'; label: string }[]).map(({ id, label }) => (
             <button
               key={id}
               onClick={() => setTab(id)}
@@ -408,7 +390,6 @@ export function InventarioInteligente() {
         </div>
       ) : (
         <>
-          {/* ── Semáforo Tab ─────────────────────────────────────────────── */}
           {tab === 'semaforo' && (
             <SemaforoTab
               paginated={paginated}
@@ -434,18 +415,8 @@ export function InventarioInteligente() {
               onPageChange={setPage}
             />
           )}
-
-          {/* ── Pedidos Tab ───────────────────────────────────────────────── */}
-          {tab === 'pedidos' && (
-            <PedidosTab resultados={resultados} />
-          )}
-
-          {/* ── Contenedores Tab ─────────────────────────────────────────── */}
           {tab === 'contenedores' && (
-            <ContenedoresTab
-              contenedores={contenedores}
-              tipoContenedor={params.tipoContenedor}
-            />
+            <ContenedoresTab contenedores={contenedores} />
           )}
         </>
       )}
@@ -541,8 +512,7 @@ function SemaforoTab({
                 Dem./día ✏️
               </th>
               <th className="px-3 py-2.5 text-right border-b border-r border-gray-300 dark:border-gray-600">Días cob.</th>
-              <th className="px-3 py-2.5 text-center border-b border-r border-gray-300 dark:border-gray-600 min-w-[100px]">Estado</th>
-              <th className="px-3 py-2.5 text-right border-b border-gray-300 dark:border-gray-600">→ Rojo</th>
+              <th className="px-3 py-2.5 text-center border-b border-gray-300 dark:border-gray-600 min-w-[100px]">Estado</th>
             </tr>
           </thead>
           <tbody>
@@ -644,19 +614,10 @@ function SemaforoTab({
                   </td>
 
                   {/* Estado badge */}
-                  <td className="px-3 py-2 text-center border-r border-gray-200 dark:border-gray-700">
+                  <td className="px-3 py-2 text-center">
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${cfg.badgeBg} ${cfg.badgeText}`}>
                       {cfg.dot} {cfg.label}
                     </span>
-                  </td>
-
-                  {/* Fecha → rojo */}
-                  <td className="px-3 py-2 text-right text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                    {r.semaforo === 'verde' && r.fechaRojo
-                      ? r.fechaRojo
-                      : r.semaforo === 'rojo' || r.semaforo === 'amarillo'
-                      ? <span className="text-red-500 dark:text-red-400 font-medium">¡Ya!</span>
-                      : '—'}
                   </td>
                 </tr>
               );
@@ -716,108 +677,15 @@ function SemaforoTab({
   );
 }
 
-// ─── Pedidos Tab ──────────────────────────────────────────────────────────────
-
-function PedidosTab({ resultados }: { resultados: ProductoResultado[] }) {
-  const pedidos = resultados.filter(
-    (r) => r.semaforo === 'rojo' || r.semaforo === 'amarillo'
-  );
-  const totalPeso = pedidos.reduce((s, r) => s + r.pesoKg, 0);
-  const totalVol  = pedidos.reduce((s, r) => s + r.volumenM3, 0);
-
-  return (
-    <div className="flex flex-col flex-1 overflow-hidden">
-      {pedidos.length === 0 ? (
-        <div className="flex flex-col items-center justify-center flex-1 text-gray-400 dark:text-gray-500">
-          <div className="text-5xl mb-3">✅</div>
-          <p className="text-lg">Sin pedidos urgentes.</p>
-          <p className="text-sm mt-1">Todos los productos están en nivel OK o sobrestock.</p>
-        </div>
-      ) : (
-        <>
-          {/* Summary row */}
-          <div className="px-6 py-3 flex flex-wrap gap-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 text-sm">
-            <span className="text-gray-600 dark:text-gray-400">
-              <strong className="text-gray-900 dark:text-gray-100">{pedidos.length}</strong> SKUs a pedir
-            </span>
-            <span className="text-gray-600 dark:text-gray-400">
-              Peso total estimado: <strong className="text-gray-900 dark:text-gray-100">{fmt(totalPeso, 1)} kg</strong>
-            </span>
-            <span className="text-gray-600 dark:text-gray-400">
-              Volumen total estimado: <strong className="text-gray-900 dark:text-gray-100">{fmt(totalVol, 2)} m³</strong>
-            </span>
-          </div>
-
-          <div className="overflow-x-auto flex-1">
-            <table className="w-full text-sm border-collapse">
-              <thead className="sticky top-0">
-                <tr className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs uppercase tracking-wide">
-                  <th className="px-3 py-2.5 text-left border-b border-r border-gray-300 dark:border-gray-600">SKU</th>
-                  <th className="px-3 py-2.5 text-left border-b border-r border-gray-300 dark:border-gray-600">Nombre</th>
-                  <th className="px-3 py-2.5 text-left border-b border-r border-gray-300 dark:border-gray-600">Proveedor</th>
-                  <th className="px-3 py-2.5 text-center border-b border-r border-gray-300 dark:border-gray-600">Estado</th>
-                  <th className="px-3 py-2.5 text-right border-b border-r border-gray-300 dark:border-gray-600">Stock</th>
-                  <th className="px-3 py-2.5 text-right border-b border-r border-gray-300 dark:border-gray-600">Dem./día</th>
-                  <th className="px-3 py-2.5 text-right border-b border-r border-gray-300 dark:border-gray-600">Días cob.</th>
-                  <th className="px-3 py-2.5 text-right border-b border-r border-gray-300 dark:border-gray-600">Pzs necesarias</th>
-                  <th className="px-3 py-2.5 text-right border-b border-r border-gray-300 dark:border-gray-600">Pzs a pedir</th>
-                  <th className="px-3 py-2.5 text-right border-b border-r border-gray-300 dark:border-gray-600">Peso est. (kg)</th>
-                  <th className="px-3 py-2.5 text-right border-b border-gray-300 dark:border-gray-600">Vol. est. (m³)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pedidos.map((r) => {
-                  const cfg = STATUS_CFG[r.semaforo];
-                  return (
-                    <tr
-                      key={r.sku}
-                      className={`border-b border-gray-200 dark:border-gray-700 ${cfg.rowBg} ${cfg.border}`}
-                    >
-                      <td className="px-3 py-2 font-mono text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700">{r.sku}</td>
-                      <td className="px-3 py-2 text-gray-800 dark:text-gray-200 border-r border-gray-200 dark:border-gray-700 max-w-xs truncate" title={r.name}>{r.name}</td>
-                      <td className="px-3 py-2 text-gray-600 dark:text-gray-400 border-r border-gray-200 dark:border-gray-700">{r.supplier}</td>
-                      <td className="px-3 py-2 text-center border-r border-gray-200 dark:border-gray-700">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${cfg.badgeBg} ${cfg.badgeText}`}>
-                          {cfg.dot} {cfg.label}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 text-right text-gray-800 dark:text-gray-200 border-r border-gray-200 dark:border-gray-700">{fmt(r.stock)}</td>
-                      <td className="px-3 py-2 text-right text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700">{r.demandaDiaria.toFixed(1)}</td>
-                      <td className={`px-3 py-2 text-right font-bold border-r border-gray-200 dark:border-gray-700 ${cfg.badgeText}`}>
-                        {fmtDias(r.diasInventario)}
-                      </td>
-                      <td className="px-3 py-2 text-right text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700">{fmt(r.pzsNecesarias)}</td>
-                      <td className="px-3 py-2 text-right font-semibold text-blue-700 dark:text-blue-300 border-r border-gray-200 dark:border-gray-700">{fmt(r.pzsAPedir)}</td>
-                      <td className="px-3 py-2 text-right text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700">
-                        {r.pesoKg > 0 ? fmt(r.pesoKg, 1) : <span className="text-gray-300 dark:text-gray-600">—</span>}
-                      </td>
-                      <td className="px-3 py-2 text-right text-gray-700 dark:text-gray-300">
-                        {r.volumenM3 > 0 ? fmt(r.volumenM3, 3) : <span className="text-gray-300 dark:text-gray-600">—</span>}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
 // ─── Contenedores Tab ─────────────────────────────────────────────────────────
 
-function ContenedoresTab({
-  contenedores,
-  tipoContenedor,
-}: {
-  contenedores: ResumenContenedor[];
-  tipoContenedor: string;
-}) {
+function ContenedoresTab({ contenedores }: { contenedores: ResumenContenedor[] }) {
+  // selectedTipo: proveedor → tipo de contenedor seleccionado por el usuario
+  const [selectedTipo, setSelectedTipo] = useState<Record<string, string>>({});
+
   if (contenedores.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center flex-1 text-gray-400 dark:text-gray-500">
+      <div className="flex flex-col items-center justify-center flex-1 py-20 text-gray-400 dark:text-gray-500">
         <div className="text-5xl mb-3">🚢</div>
         <p className="text-lg">Sin pedidos pendientes.</p>
         <p className="text-sm mt-1">Configura la demanda diaria para ver el llenado de contenedores.</p>
@@ -828,81 +696,111 @@ function ContenedoresTab({
   return (
     <div className="flex-1 overflow-y-auto p-6">
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-        Estimación de llenado del contenedor <strong>{tipoContenedor}&apos;</strong> por proveedor.
-        Solo incluye SKUs en estado Crítico o Alerta con demanda configurada.
+        Estimación de llenado por proveedor. Cambia el tipo de contenedor para comparar opciones —
+        el modelo resalta su recomendación con <span className="text-green-600 dark:text-green-400 font-semibold">✦ Recomendado</span>.
       </p>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {contenedores.map((c) => {
-          const weightColor =
-            c.pctPeso >= 80
-              ? 'bg-green-500'
-              : c.pctPeso >= 50
-              ? 'bg-yellow-500'
-              : c.pctPeso >= 30
-              ? 'bg-orange-500'
-              : 'bg-red-400';
-          const volColor =
-            c.pctVol >= 80
-              ? 'bg-green-500'
-              : c.pctVol >= 50
-              ? 'bg-yellow-500'
-              : c.pctVol >= 30
-              ? 'bg-orange-500'
-              : 'bg-red-400';
+          const tipoActual = selectedTipo[c.supplier] ?? c.tipoRecomendado;
+          const opcion = c.opciones.find((o) => o.tipo === tipoActual) ?? c.opciones[0];
+
+          const barColor = (pct: number) =>
+            pct > 100 ? 'bg-red-500'
+            : pct >= 80 ? 'bg-green-500'
+            : pct >= 50 ? 'bg-yellow-500'
+            : 'bg-orange-400';
+
           return (
             <div
               key={c.supplier}
               className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5"
             >
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-gray-800 dark:text-gray-100 text-lg">
+              {/* Header */}
+              <div className="flex items-start justify-between mb-4 gap-2">
+                <h3 className="font-bold text-gray-800 dark:text-gray-100 text-base leading-tight">
                   🏭 {c.supplier}
                 </h3>
-                <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 px-2 py-1 rounded-full">
-                  Contenedor {c.tipoContenedor}&apos;
+                <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">
+                  {fmt(c.pesoTotalKg, 1)} kg · {fmt(c.volumenTotalM3, 2)} m³
                 </span>
               </div>
 
-              {/* Peso bar */}
+              {/* Selector de contenedor */}
+              <div className="flex gap-2 mb-4">
+                {c.opciones.map((o) => {
+                  const active = o.tipo === tipoActual;
+                  return (
+                    <button
+                      key={o.tipo}
+                      onClick={() => setSelectedTipo((prev) => ({ ...prev, [c.supplier]: o.tipo }))}
+                      className={`relative flex-1 py-2 px-3 rounded-lg text-sm font-medium border-2 transition-all ${
+                        active
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                          : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-500'
+                      }`}
+                    >
+                      {o.tipo}&apos;
+                      {o.recomendado && (
+                        <span className="absolute -top-2 -right-1 text-[10px] bg-green-500 text-white px-1 rounded-full leading-4">
+                          ✦
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Barra peso */}
               <div className="mb-3">
                 <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
                   <span>⚖️ Peso</span>
                   <span>
-                    {fmt(c.pesoTotalKg, 1)} / {fmt(c.pesoMaxKg)} kg{' '}
-                    <strong className={c.pctPeso >= 80 ? 'text-green-600 dark:text-green-400' : 'text-orange-500'}>{c.pctPeso}%</strong>
+                    {fmt(c.pesoTotalKg, 1)} / {fmt(opcion.pesoMaxKg)} kg{' '}
+                    <strong className={opcion.pctPeso > 100 ? 'text-red-500' : opcion.pctPeso >= 80 ? 'text-green-600 dark:text-green-400' : 'text-orange-500'}>
+                      {opcion.pctPeso}%
+                    </strong>
                   </span>
                 </div>
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3.5 overflow-hidden">
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
                   <div
-                    className={`h-3.5 rounded-full transition-all ${weightColor}`}
-                    style={{ width: `${Math.min(c.pctPeso, 100)}%` }}
+                    className={`h-3 rounded-full transition-all ${barColor(opcion.pctPeso)}`}
+                    style={{ width: `${Math.min(opcion.pctPeso, 100)}%` }}
                   />
                 </div>
               </div>
 
-              {/* Volumen bar */}
+              {/* Barra volumen */}
               <div className="mb-4">
                 <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
                   <span>📦 Volumen</span>
                   <span>
-                    {fmt(c.volumenTotalM3, 2)} / {fmt(c.volMaxM3)} m³{' '}
-                    <strong className={c.pctVol >= 80 ? 'text-green-600 dark:text-green-400' : 'text-orange-500'}>{c.pctVol}%</strong>
+                    {fmt(c.volumenTotalM3, 2)} / {fmt(opcion.volMaxM3)} m³{' '}
+                    <strong className={opcion.pctVol > 100 ? 'text-red-500' : opcion.pctVol >= 80 ? 'text-green-600 dark:text-green-400' : 'text-orange-500'}>
+                      {opcion.pctVol}%
+                    </strong>
                   </span>
                 </div>
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3.5 overflow-hidden">
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
                   <div
-                    className={`h-3.5 rounded-full transition-all ${volColor}`}
-                    style={{ width: `${Math.min(c.pctVol, 100)}%` }}
+                    className={`h-3 rounded-full transition-all ${barColor(opcion.pctVol)}`}
+                    style={{ width: `${Math.min(opcion.pctVol, 100)}%` }}
                   />
                 </div>
               </div>
 
-              {/* Productos list */}
-              <div className="space-y-1">
+              {/* Aviso overflow */}
+              {opcion.pctMax > 100 && (
+                <p className="text-xs text-red-600 dark:text-red-400 mb-3">
+                  🚨 El pedido supera la capacidad ({opcion.pctMax}%). Divide el envío en múltiples contenedores.
+                </p>
+              )}
+
+              {/* Lista productos */}
+              <div>
                 <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
                   {c.productos.length} SKUs incluidos
                 </p>
-                <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
+                <div className="max-h-44 overflow-y-auto space-y-1 pr-1">
                   {c.productos.map((p) => {
                     const cfg = STATUS_CFG[p.semaforo];
                     return (
@@ -924,17 +822,6 @@ function ContenedoresTab({
                   })}
                 </div>
               </div>
-
-              {c.pctPeso < 80 && (
-                <p className="text-xs text-amber-600 dark:text-amber-400 mt-3">
-                  ⚠️ Llenado bajo el 80% ({c.pctPeso}%). Considera agregar productos verdes de este proveedor para optimizar el contenedor.
-                </p>
-              )}
-              {c.pctPeso > 100 && (
-                <p className="text-xs text-red-600 dark:text-red-400 mt-3">
-                  🚨 El pedido supera la capacidad del contenedor ({c.pctPeso}%). Divide el envío en múltiples contenedores.
-                </p>
-              )}
             </div>
           );
         })}
@@ -942,3 +829,4 @@ function ContenedoresTab({
     </div>
   );
 }
+
