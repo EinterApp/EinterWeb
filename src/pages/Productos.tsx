@@ -35,6 +35,30 @@ export function Productos() {
 
   const [imageZoomVisible, setImageZoomVisible] = useState(false);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
+
+  const [syncLoading, setSyncLoading] = useState(false);
+  const [syncMsg,     setSyncMsg]     = useState<{ ok: boolean; text: string } | null>(null);
+
+  const handleSyncOdoo = async () => {
+    setSyncLoading(true);
+    setSyncMsg(null);
+    try {
+      const provRes = await fetchAPI('/api/odoo/pull/proveedores', { method: 'POST' });
+      const prodRes = await fetchAPI('/api/odoo/pull/productos',   { method: 'POST' });
+      const provCount = provRes.upserted ?? 0;
+      const prodCount = prodRes.upserted ?? 0;
+      const mapped    = prodRes.suppliersMapped ?? 0;
+      setSyncMsg({
+        ok: true,
+        text: `Sync completado — ${provCount} proveedores, ${prodCount} productos (${mapped} con proveedor mapeado).`,
+      });
+      await fetchProducts('', 1);
+    } catch (err) {
+      setSyncMsg({ ok: false, text: err instanceof Error ? err.message : 'Error al sincronizar' });
+    } finally {
+      setSyncLoading(false);
+    }
+  };
   
   const fetchProducts = useCallback(async (searchQuery = "", pageNum = 1) => {
     setLoading(true);
@@ -389,12 +413,26 @@ export function Productos() {
           <h1 className="text-3xl font-bold tracking-wide text-gray-900 dark:text-white">
             Productos
           </h1>
-          <button
-            onClick={openCreateModal}
-            className="px-6 py-2 border border-black dark:border-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black transition-colors text-sm font-medium text-gray-900 dark:text-white"
-          >
-            + Agregar Producto
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleSyncOdoo}
+              disabled={syncLoading}
+              className="px-4 py-2 border border-gray-400 dark:border-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-sm font-medium text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {syncLoading ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                  Sincronizando...
+                </>
+              ) : '↻ Sync Odoo'}
+            </button>
+            <button
+              onClick={openCreateModal}
+              className="px-6 py-2 border border-black dark:border-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black transition-colors text-sm font-medium text-gray-900 dark:text-white"
+            >
+              + Agregar Producto
+            </button>
+          </div>
         </div>
 
         {/* Search Bar */}
@@ -447,6 +485,12 @@ export function Productos() {
             </div>
           )}
         </div>
+
+        {syncMsg && (
+          <div className={`mt-4 p-3 border rounded-lg ${syncMsg.ok ? 'bg-green-50 dark:bg-green-900/30 border-green-300 dark:border-green-700 text-green-700 dark:text-green-300' : 'bg-red-100 dark:bg-red-900 border-red-300 dark:border-red-700 text-red-700 dark:text-red-300'}`}>
+            {syncMsg.text}
+          </div>
+        )}
 
         {error && (
           <div className="mt-4 p-3 bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700 rounded-lg">

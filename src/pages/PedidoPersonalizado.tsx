@@ -100,9 +100,10 @@ export function PedidoPersonalizado() {
   useDarkMode();
 
   // ── Datos ─────────────────────────────────────────────────────────────────
-  const [catalogo, setCatalogo] = useState<SkuCatalogo[]>([]);
-  const [loading,  setLoading]  = useState(false);
-  const [error,    setError]    = useState<string | null>(null);
+  const [catalogo,    setCatalogo]    = useState<SkuCatalogo[]>([]);
+  const [proveedores, setProveedores] = useState<{ id: number; nombre: string }[]>([]);
+  const [loading,     setLoading]     = useState(false);
+  const [error,       setError]       = useState<string | null>(null);
 
   // ── Wizard state ──────────────────────────────────────────────────────────
   const [step,          setStep]          = useState<Step>('loading');
@@ -136,24 +137,33 @@ export function PedidoPersonalizado() {
       try { demanda = JSON.parse(localStorage.getItem(LS_DEMAND)  || '{}'); } catch {}
       try { transit = JSON.parse(localStorage.getItem(LS_TRANSIT) || '{}'); } catch {}
 
-      // Paginar todos los productos
-      const items: any[] = [];
-      let page = 1;
-      while (true) {
+      // Cargar proveedores y productos en paralelo
+      const [provRes, ...productBatches] = await Promise.all([
+        fetchAPI('/api/odoo/proveedores?pageSize=500'),
+        fetchAPI('/api/odoo/productos?page=1&pageSize=100'),
+      ]);
+
+      setProveedores(
+        (provRes.items || []).map((p: any) => ({ id: p.id_proveedor, nombre: p.nombre }))
+      );
+
+      // Paginar resto de productos
+      const firstBatch = productBatches[0];
+      const items: any[] = firstBatch.items || [];
+      const total: number = firstBatch.total || 0;
+      let page = 2;
+      while (items.length < total) {
         const res = await fetchAPI(`/api/odoo/productos?page=${page}&pageSize=100`);
         const batch: any[] = res.items || [];
         items.push(...batch);
-        const total: number = res.total || 0;
-        if (items.length >= total || batch.length === 0) break;
+        if (batch.length === 0 || page > 30) break;
         page++;
-        if (page > 30) break;
       }
 
       const skus: SkuCatalogo[] = items
         .filter(item => {
           const std = Number(item.inventario_standar_tarima) || 0;
-          const peso = Number(item.peso_kg) || 0;
-          return std > 0 && peso > 0;
+          return std > 0;
         })
         .map(item => {
           const skuStr     = item.master_sku ?? String(item.id_articulo ?? '');
@@ -204,16 +214,19 @@ export function PedidoPersonalizado() {
   useEffect(() => { cargarCatalogo(); }, [cargarCatalogo]);
 
   // ── Suppliers disponibles ─────────────────────────────────────────────────
-  const suppliers = Array.from(new Set(catalogo.map(s => s.supplier))).sort();
+  // Usar lista completa de proveedores del endpoint; si aún no cargó, derivar del catálogo
+  const supplierNames = proveedores.length > 0
+    ? proveedores.map(p => p.nombre).sort()
+    : Array.from(new Set(catalogo.map(s => s.supplier))).sort();
 
-  const supplierStats = suppliers.map(sup => {
+  const supplierStats = supplierNames.map(sup => {
     const skus = catalogo.filter(s => s.supplier === sup);
     return {
-      supplier: sup,
-      total:     skus.length,
-      critico:   skus.filter(s => s.semaforo === 'CRITICO').length,
-      alerta:    skus.filter(s => s.semaforo === 'ALERTA').length,
-      ok:        skus.filter(s => s.semaforo === 'OK').length,
+      supplier:   sup,
+      total:      skus.length,
+      critico:    skus.filter(s => s.semaforo === 'CRITICO').length,
+      alerta:     skus.filter(s => s.semaforo === 'ALERTA').length,
+      ok:         skus.filter(s => s.semaforo === 'OK').length,
       sobrestock: skus.filter(s => s.semaforo === 'SOBRESTOCK').length,
     };
   });
