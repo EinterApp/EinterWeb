@@ -21,6 +21,7 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
     { id: 'ventas', label: 'Ventas', icon: '💰' },
     { id: 'recibos', label: 'Recibos', icon: '🧾' },
     { id: 'inventario-inteligente', label: 'Inv. Inteligente', icon: '🧠' },
+    { id: 'pedido-personalizado', label: 'Pedido Custom', icon: '📦' },
     { id: 'categorias', label: 'Categorías', icon: '📂' },
     { id: 'perfiles', label: 'Perfiles', icon: '👤' },
     ...(isSuperAdmin ? [{ id: 'users', label: 'Usuarios', icon: '👥' }] : []),

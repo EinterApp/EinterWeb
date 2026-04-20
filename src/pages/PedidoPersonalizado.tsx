@@ -141,11 +141,12 @@ export function PedidoPersonalizado() {
       let page = 1;
       while (true) {
         const res = await fetchAPI(`/api/odoo/productos?page=${page}&pageSize=100`);
-        const batch = res.data ?? res.productos ?? res ?? [];
-        if (!Array.isArray(batch) || batch.length === 0) break;
+        const batch: any[] = res.items || [];
         items.push(...batch);
-        if (batch.length < 100) break;
+        const total: number = res.total || 0;
+        if (items.length >= total || batch.length === 0) break;
         page++;
+        if (page > 30) break;
       }
 
       const skus: SkuCatalogo[] = items
