@@ -25,3 +25,4 @@ dist-ssr
 .env
 
 firebase-service-account.json
+/einter_poc
