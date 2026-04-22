@@ -305,9 +305,10 @@ export function PedidoPersonalizado() {
     setStep('container');
   }
 
-  function resolverYMostrar() {
+  function resolverYMostrar(ctOverride?: ContainerType) {
+    const ct = ctOverride ?? ctype;
     const candidatos = calcularCandidatos(new Set(anclas.map(a => a.sku)));
-    const result = resolverPedido(anclas, candidatos, ctype, nMax);
+    const result = resolverPedido(anclas, candidatos, ct, nMax);
 
     if (result.excedeNMax) {
       // Escenario A
@@ -315,7 +316,7 @@ export function PedidoPersonalizado() {
         const row = catalogoProv.find(s => s.sku === a.sku)!;
         return { ancla: a, dI: row?.dI ?? 0, cobDias: row?.cobDias ?? 9999, estado: row?.semaforo ?? 'OK' };
       });
-      const rA = resolverEscenarioA(anclasCtx, ctype, nMax);
+      const rA = resolverEscenarioA(anclasCtx, ct, nMax);
       setScenarioA(rA);
       setPackResult(result);
       setStep('results');
@@ -790,7 +791,7 @@ export function PedidoPersonalizado() {
                 return (
                   <button
                     key={ct.name}
-                    onClick={() => setCtype(ct)}
+                    onClick={() => { setCtype(ct); resolverYMostrar(ct); }}
                     className={`w-full rounded-xl border-2 p-4 text-left transition-all ${
                       isSelected
                         ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30 shadow-sm'
@@ -830,7 +831,7 @@ export function PedidoPersonalizado() {
             <div className="flex gap-3">
               <BackBtn onClick={() => setStep('nmax')} />
               <button
-                onClick={resolverYMostrar}
+                onClick={() => resolverYMostrar()}
                 className="flex-1 flex items-center justify-center gap-2 px-6 py-2.5 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-xl transition-colors shadow-sm shadow-blue-200 dark:shadow-none text-sm"
               >
                 Resolver cubicaje
